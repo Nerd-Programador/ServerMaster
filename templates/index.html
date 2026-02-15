@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ServerMaster Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <header class="statusbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <strong>ServerMaster</strong>
+        <small>{{ host_name }}</small>
+      </div>
+      <div id="service-status" class="service-grid"></div>
+    </header>
+
+    <main class="container">
+      <section>
+        <h2>Web</h2>
+        <div class="cards" id="web-cards">
+          <article class="card"><h3>CPU</h3><p id="cpu"></p></article>
+          <article class="card"><h3>Memória</h3><p id="memory"></p></article>
+          <article class="card"><h3>Temperatura</h3><p id="temp"></p></article>
+          <article class="card"><h3>Rede</h3><p id="network"></p><ul id="network-history"></ul></article>
+          <article class="card"><h3>Uptime</h3><p id="uptime"></p></article>
+        </div>
+      </section>
+
+      <section>
+        <h2>NAS</h2>
+        <div class="cards" id="nas-cards"></div>
+      </section>
+
+      <section>
+        <h2>IoT</h2>
+        <div class="cards" id="iot-cards"></div>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>
