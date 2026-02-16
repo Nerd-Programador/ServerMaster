@@ -13,29 +13,39 @@
         <strong>ServerMaster</strong>
         <small>{{ host_name }}</small>
       </div>
+      <div class="status-meta">
+        <span id="data-source" class="badge">Fonte: {{ 'simulada' if simulation_mode else 'real' }}</span>
+        <span id="last-updated" class="badge">Atualizando...</span>
+      </div>
       <div id="service-status" class="service-grid"></div>
     </header>
 
     <main class="container">
+      <p id="error-banner" class="error-banner hidden"></p>
+
       <section>
         <h2>Web</h2>
         <div class="cards" id="web-cards">
-          <article class="card"><h3>CPU</h3><p id="cpu"></p></article>
-          <article class="card"><h3>Memória</h3><p id="memory"></p></article>
-          <article class="card"><h3>Temperatura</h3><p id="temp"></p></article>
-          <article class="card"><h3>Rede</h3><p id="network"></p><ul id="network-history"></ul></article>
-          <article class="card"><h3>Uptime</h3><p id="uptime"></p></article>
+          <article class="card"><h3>CPU</h3><p id="cpu">Carregando...</p></article>
+          <article class="card"><h3>Memória</h3><p id="memory">Carregando...</p></article>
+          <article class="card"><h3>Temperatura</h3><p id="temp">Carregando...</p></article>
+          <article class="card"><h3>Rede</h3><p id="network">Carregando...</p><ul id="network-history"></ul></article>
+          <article class="card"><h3>Uptime</h3><p id="uptime">Carregando...</p></article>
         </div>
       </section>
 
       <section>
         <h2>NAS</h2>
-        <div class="cards" id="nas-cards"></div>
+        <div class="cards" id="nas-cards">
+          <article class="card"><h3>Carregando volumes...</h3></article>
+        </div>
       </section>
 
       <section>
         <h2>IoT</h2>
-        <div class="cards" id="iot-cards"></div>
+        <div class="cards" id="iot-cards">
+          <article class="card"><h3>Carregando dispositivos...</h3></article>
+        </div>
       </section>
     </main>
 

@@ -23,6 +23,7 @@ body {
   z-index: 10;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   background: #121521e8;
@@ -35,6 +36,16 @@ body {
 .dot { width: .7rem; height: .7rem; border-radius: 999px; background: var(--ok); }
 .brand small { color: var(--muted); }
 
+.status-meta { display: flex; flex-wrap: wrap; gap: .45rem; }
+.badge {
+  border: 1px solid var(--border);
+  background: #1c2130;
+  color: #cad2e6;
+  border-radius: 999px;
+  font-size: .75rem;
+  padding: .28rem .62rem;
+}
+
 .service-grid { display: flex; flex-wrap: wrap; gap: .5rem; }
 .service-pill {
   border: 1px solid var(--border);
@@ -46,6 +57,16 @@ body {
 .container { padding: 1rem; max-width: 1200px; margin: 0 auto; }
 section { margin-top: 1.2rem; }
 h2 { color: #c7d2fe; margin: 0 0 .8rem; font-size: 1rem; text-transform: uppercase; letter-spacing: .08em; }
+
+.error-banner {
+  margin: .2rem 0 .7rem;
+  padding: .6rem .8rem;
+  border: 1px solid #81353a;
+  background: #331a1d;
+  color: #ffc8cc;
+  border-radius: 8px;
+}
+.hidden { display: none; }
 
 .cards {
   display: grid;

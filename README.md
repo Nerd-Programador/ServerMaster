@@ -46,6 +46,24 @@ Abra:
 - `http://localhost:5000`
 - `http://ServerMaster.local:5000`
 
+
+### Modo demonstração (dados simulados na página)
+
+Se você quiser ver a dashboard completa mesmo sem sensores/discos/MQTT reais:
+
+```bash
+SIMULATION_MODE=1 python app.py
+```
+
+No Windows (PowerShell):
+
+```powershell
+$env:SIMULATION_MODE = "1"
+python app.py
+```
+
+Isso preenche CPU/memória/rede/NAS/status com valores simulados para facilitar validação visual.
+
 ## 4.1) Rodando localmente no VSCode (passo a passo)
 
 Se você está começando agora, esse é o fluxo mais simples:
@@ -222,6 +240,28 @@ Ao chegar uma mensagem:
 - o card aparece automaticamente na seção **IoT**;
 - dados ficam salvos no SQLite (`servermaster.db`).
 
+## 6.1) Script de simulação de dados IoT
+
+Criei um script para preencher o SQLite com ESPs fictícias e, opcionalmente, publicar no MQTT:
+
+```bash
+python scripts/simulate_data.py --devices 6
+```
+
+Modo contínuo (atualiza a cada 5s):
+
+```bash
+python scripts/simulate_data.py --devices 6 --loop --interval 5
+```
+
+Publicando também no MQTT:
+
+```bash
+python scripts/simulate_data.py --devices 6 --publish-mqtt --mqtt-host 127.0.0.1 --mqtt-port 1883
+```
+
+No Windows, use os mesmos comandos com `python` no PowerShell.
+
 ## 7) Regras especiais implementadas
 
 - **Uptime humano dinâmico**: formato progressivo com unidades (SS, MM, HH, DD, WK, MO).
@@ -239,5 +279,6 @@ requirements.txt
 templates/index.html
 static/style.css
 static/app.js
+scripts/simulate_data.py
 servermaster.db (gerado em runtime)
 ```

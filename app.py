@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import socket
 import sqlite3
 import subprocess
@@ -26,9 +27,9 @@ MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", "devices/+/status")
 FIREBASE_HOST = os.getenv("FIREBASE_HOST", "firebase.google.com")
+SIMULATION_MODE = os.getenv("SIMULATION_MODE", "0") == "1"
 
 app = Flask(__name__)
-
 
 
 @dataclass
@@ -266,13 +267,24 @@ def ping_tcp(host: str, port: int, timeout: float = 1.5) -> float | None:
     return (time.perf_counter() - start) * 1000
 
 
+def _measure_service(name: str, host: str | None = None, port: int | None = None, force_online: bool | None = None) -> ServiceStatus:
+    if force_online is not None:
+        return ServiceStatus(name, force_online, 0.2 if force_online else None)
+
+    if host is None or port is None:
+        return ServiceStatus(name, False, None)
+
+    latency = ping_tcp(host, port)
+    return ServiceStatus(name, latency is not None, latency)
+
+
 def collect_service_status() -> list[ServiceStatus]:
     sqlite_online = DB_PATH.exists()
     return [
-        ServiceStatus("INTERNET", ping_tcp("8.8.8.8", 53) is not None, ping_tcp("8.8.8.8", 53)),
-        ServiceStatus("MQTT", ping_tcp(MQTT_BROKER, MQTT_PORT) is not None, ping_tcp(MQTT_BROKER, MQTT_PORT)),
-        ServiceStatus("FIREBASE", ping_tcp(FIREBASE_HOST, 443) is not None, ping_tcp(FIREBASE_HOST, 443)),
-        ServiceStatus("SQLITE", sqlite_online, 0.2 if sqlite_online else None),
+        _measure_service("INTERNET", "8.8.8.8", 53),
+        _measure_service("MQTT", MQTT_BROKER, MQTT_PORT),
+        _measure_service("FIREBASE", FIREBASE_HOST, 443),
+        _measure_service("SQLITE", force_online=sqlite_online),
     ]
 
 
@@ -299,6 +311,28 @@ def get_nas_disks() -> list[dict[str, Any]]:
             }
         )
     return disks
+
+
+def simulated_nas_disks() -> list[dict[str, Any]]:
+    samples = [
+        ("/dev/sda1", "/mnt/nas-media", 2 * 1024**4, int(1.38 * 1024**4)),
+        ("/dev/sdb1", "/mnt/nas-backup", 1 * 1024**4, int(0.45 * 1024**4)),
+    ]
+    data: list[dict[str, Any]] = []
+    for device, mount, total, used in samples:
+        free = total - used
+        percent = round((used / total) * 100, 2)
+        data.append(
+            {
+                "device": device,
+                "mountpoint": mount,
+                "total": total,
+                "used": used,
+                "free": free,
+                "percent": percent,
+            }
+        )
+    return data
 
 
 def upsert_iot_device(device_id: str, hostname: str | None, ip: str | None, status: str = "online") -> None:
@@ -336,7 +370,7 @@ def mqtt_message_handler(_: Any, __: Any, msg: Any) -> None:
 
 
 def start_mqtt_listener() -> None:
-    if mqtt is None:
+    if mqtt is None or SIMULATION_MODE:
         return
 
     client = mqtt.Client(client_id="servermaster-dashboard")
@@ -351,13 +385,58 @@ def start_mqtt_listener() -> None:
     client.loop_start()
 
 
-@app.route("/")
-def dashboard() -> str:
-    return render_template("index.html", host_name=socket.gethostname())
+def simulated_metrics() -> dict[str, Any]:
+    now = datetime.now()
+    history: list[dict[str, str]] = []
+    for idx in range(6):
+        month_key = (now.month - idx - 1) % 12 + 1
+        year = now.year if now.month - idx > 0 else now.year - 1
+        key = f"{year}-{month_key:02d}"
+        history.append({
+            "month": key,
+            "upload": format_bytes(random.randint(80, 260) * 1024**3),
+            "download": format_bytes(random.randint(240, 820) * 1024**3),
+        })
+
+    services = [
+        {"name": "INTERNET", "online": True, "latency_ms": round(random.uniform(6, 22), 2)},
+        {"name": "MQTT", "online": True, "latency_ms": round(random.uniform(1, 6), 2)},
+        {"name": "FIREBASE", "online": True, "latency_ms": round(random.uniform(14, 60), 2)},
+        {"name": "SQLITE", "online": True, "latency_ms": 0.2},
+    ]
+
+    nas = [
+        {
+            **disk,
+            "total_h": format_bytes(disk["total"]),
+            "used_h": format_bytes(disk["used"]),
+            "free_h": format_bytes(disk["free"]),
+        }
+        for disk in simulated_nas_disks()
+    ]
+
+    return {
+        "system": {
+            "hostname": "ServerMaster",
+            "cpu_percent": round(random.uniform(18, 84), 1),
+            "memory_percent": round(random.uniform(35, 79), 1),
+            "memory_used": format_bytes(int(random.uniform(1.2, 2.8) * 1024**3)),
+            "memory_total": "4.00 GB",
+            "uptime_human": format_uptime_human(random.randint(20_000, 6_000_000)),
+            "temperature_cpu": round(random.uniform(41, 68), 1),
+            "temperature_gpu": round(random.uniform(43, 72), 1),
+            "network_upload": format_bytes(random.randint(40, 220) * 1024**3),
+            "network_download": format_bytes(random.randint(120, 860) * 1024**3),
+            "network_current_month": datetime.now().strftime("%Y-%m"),
+            "network_history": history,
+        },
+        "services": services,
+        "nas": nas,
+        "data_source": "simulated",
+    }
 
 
-@app.route("/api/metrics")
-def api_metrics() -> Any:
+def real_metrics() -> dict[str, Any]:
     vm = psutil.virtual_memory()
     cpu_usage = psutil.cpu_percent(interval=0.2)
     uptime = int(time.time() - psutil.boot_time())
@@ -374,41 +453,58 @@ def api_metrics() -> Any:
         for svc in collect_service_status()
     ]
 
-    return jsonify(
-        {
-            "system": {
-                "hostname": socket.gethostname(),
-                "cpu_percent": cpu_usage,
-                "memory_percent": vm.percent,
-                "memory_used": format_bytes(vm.used),
-                "memory_total": format_bytes(vm.total),
-                "uptime_human": format_uptime_human(uptime),
-                "temperature_cpu": cpu_temp,
-                "temperature_gpu": gpu_temp,
-                "network_upload": format_bytes(network_usage["upload_bytes"]),
-                "network_download": format_bytes(network_usage["download_bytes"]),
-                "network_current_month": network_usage["current_month"],
-                "network_history": [
-                    {
-                        "month": month["month"],
-                        "upload": format_bytes(month["upload_bytes"]),
-                        "download": format_bytes(month["download_bytes"]),
-                    }
-                    for month in network_usage["history"]
-                ],
-            },
-            "services": services,
-            "nas": [
+    nas_disks = get_nas_disks()
+
+    return {
+        "system": {
+            "hostname": socket.gethostname(),
+            "cpu_percent": cpu_usage,
+            "memory_percent": vm.percent,
+            "memory_used": format_bytes(vm.used),
+            "memory_total": format_bytes(vm.total),
+            "uptime_human": format_uptime_human(uptime),
+            "temperature_cpu": cpu_temp,
+            "temperature_gpu": gpu_temp,
+            "network_upload": format_bytes(network_usage["upload_bytes"]),
+            "network_download": format_bytes(network_usage["download_bytes"]),
+            "network_current_month": network_usage["current_month"],
+            "network_history": [
                 {
-                    **disk,
-                    "total_h": format_bytes(disk["total"]),
-                    "used_h": format_bytes(disk["used"]),
-                    "free_h": format_bytes(disk["free"]),
+                    "month": month["month"],
+                    "upload": format_bytes(month["upload_bytes"]),
+                    "download": format_bytes(month["download_bytes"]),
                 }
-                for disk in get_nas_disks()
+                for month in network_usage["history"]
             ],
-        }
-    )
+        },
+        "services": services,
+        "nas": [
+            {
+                **disk,
+                "total_h": format_bytes(disk["total"]),
+                "used_h": format_bytes(disk["used"]),
+                "free_h": format_bytes(disk["free"]),
+            }
+            for disk in nas_disks
+        ],
+        "data_source": "real",
+    }
+
+
+@app.route("/")
+def dashboard() -> str:
+    return render_template("index.html", host_name=socket.gethostname(), simulation_mode=SIMULATION_MODE)
+
+
+@app.route("/api/metrics")
+def api_metrics() -> Any:
+    if SIMULATION_MODE:
+        return jsonify(simulated_metrics())
+
+    try:
+        return jsonify(real_metrics())
+    except Exception as exc:  # pragma: no cover - safeguard for UI visibility
+        return jsonify({"error": str(exc), "hint": "Use SIMULATION_MODE=1 to load demo data."}), 500
 
 
 @app.route("/api/iot-devices")
