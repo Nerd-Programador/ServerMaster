@@ -111,6 +111,62 @@ Crie o arquivo `.vscode/launch.json` com:
 
 Depois disso, é só apertar `F5`.
 
+
+## 4.2) Problema no Windows: `python3` não encontrado
+
+Se aparecer erro como:
+
+```text
+Python não foi encontrado; executar sem argumentos para instalar do Microsoft Store...
+```
+
+no Windows normalmente o comando correto é `python` ou `py` (e não `python3`).
+
+### Passo a passo (Windows + PowerShell)
+
+1. Instale o Python 3.11+ pelo site oficial: https://www.python.org/downloads/windows/
+2. **Marque** a opção `Add Python to PATH` durante a instalação.
+3. Feche e abra o PowerShell novamente.
+4. Teste:
+
+```powershell
+py --version
+python --version
+```
+
+5. Crie a venv com um destes comandos:
+
+```powershell
+py -3 -m venv .venv
+```
+
+ou
+
+```powershell
+python -m venv .venv
+```
+
+6. Ative o ambiente virtual:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+7. Se bloquear por política de execução, rode (uma vez):
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+8. Instale dependências e rode:
+
+```powershell
+pip install -r requirements.txt
+python app.py
+```
+
+> Dica: em Windows, não use `source .venv/bin/activate` (esse comando é para Linux/macOS).
+
 ## 5) Subir como serviço systemd
 
 Crie `/etc/systemd/system/servermaster-dashboard.service`:
