@@ -46,6 +46,71 @@ Abra:
 - `http://localhost:5000`
 - `http://ServerMaster.local:5000`
 
+## 4.1) Rodando localmente no VSCode (passo a passo)
+
+Se você está começando agora, esse é o fluxo mais simples:
+
+1. Abra a pasta do projeto no VSCode (`File > Open Folder`).
+2. Abra o terminal integrado (`Ctrl + ``).
+3. Crie o ambiente virtual:
+
+```bash
+python3 -m venv .venv
+```
+
+4. Ative o ambiente virtual:
+
+```bash
+source .venv/bin/activate
+```
+
+5. Instale as dependências:
+
+```bash
+pip install -r requirements.txt
+```
+
+6. Selecione o interpretador Python no VSCode:
+   - `Ctrl + Shift + P`
+   - `Python: Select Interpreter`
+   - escolha o da pasta `.venv`
+
+7. Rode a aplicação no terminal:
+
+```bash
+python app.py
+```
+
+8. Abra no navegador:
+   - `http://localhost:5000`
+
+### Executar com botão de Debug do VSCode (opcional)
+
+Crie o arquivo `.vscode/launch.json` com:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ServerMaster Dashboard",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/app.py",
+      "console": "integratedTerminal",
+      "env": {
+        "MQTT_BROKER": "127.0.0.1",
+        "MQTT_PORT": "1883",
+        "MQTT_TOPIC": "devices/+/status",
+        "FIREBASE_HOST": "firebase.google.com"
+      }
+    }
+  ]
+}
+```
+
+Depois disso, é só apertar `F5`.
+
 ## 5) Subir como serviço systemd
 
 Crie `/etc/systemd/system/servermaster-dashboard.service`:
